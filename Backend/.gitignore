@@ -4,3 +4,4 @@ non_coal_data.xlsx
 sensor-data.json
 testing.js
 uploadFirestore.js
+.env
