@@ -1,0 +1,6 @@
+node_modules
+coal_data.xlsx
+non_coal_data.xlsx
+sensor-data.json
+testing.js
+uploadFirestore.js
