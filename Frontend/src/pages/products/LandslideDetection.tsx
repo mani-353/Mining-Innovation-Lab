@@ -7,6 +7,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Mountain, AlertTriangle, Brain, Camera, Zap, Droplets, Thermometer, Gauge, Navigation, MapPin } from 'lucide-react';
 import { ref, onValue } from "firebase/database";
 import { db } from '@/integrations/firebase/database';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+
 
 const RadialGauge = ({ value, max, min = 0, label, unit, color = "#3b82f6" }) => {
   const percentage = ((value - min) / (max - min)) * 100;
@@ -117,18 +119,25 @@ const LandslideDetection = () => {
 
         const latest = parsed[parsed.length - 1];
 
-        if (latest && latest.temp !== null && latest.temp !== undefined) {
+        if (latest) {
           setEnvironmentalData({
             temp: latest.temp ?? 0,
             hum: latest.hum ?? 0,
-            atm: latest.atm ?? 1013,
+            atm: latest.pres ?? 1013,  // Changed from 'atm' to 'pres'
             soil: latest.soil ?? 0,
             vbr1: Boolean(latest.vbr),
-            vbr2: false,
             rain: Boolean(latest.rain),
             lat: latest.lat ?? 0,
             long: latest.long ?? 0,
             compass: latest.heading ?? 0,
+            // New fields
+            avgdist: latest.avgdist ?? 0,
+            distx: latest.distx ?? 0,
+            disty: latest.disty ?? 0,
+            speed: latest.speed ?? 0,
+            mode: latest.mode ?? 'unknown',
+            alt: latest.alt ?? 0,
+            alert: Boolean(latest.alert), // Add alert field
           });
         } else {
           setEnvironmentalData(null);
@@ -139,7 +148,30 @@ const LandslideDetection = () => {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (environmentalData?.alert) {
+      // Simple toast implementation
+      const toastElement = document.createElement('div');
+      toastElement.className = 'fixed top-4 right-4 z-50 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg';
+      toastElement.innerHTML = `
+      <div class="flex items-center space-x-2">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.32-.191 2.98-1.742 2.98H4.42c-1.551 0-2.492-1.66-1.743-2.98l5.58-9.92z" clip-rule="evenodd"/>
+        </svg>
+        <span>🚨 LANDSLIDE ALERT DETECTED! 🚨</span>
+      </div>
+    `;
 
+      document.body.appendChild(toastElement);
+
+      // Auto-remove toast after 5 seconds
+      setTimeout(() => {
+        if (document.body.contains(toastElement)) {
+          document.body.removeChild(toastElement);
+        }
+      }, 5000);
+    }
+  }, [environmentalData?.alert]);
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -326,17 +358,10 @@ const LandslideDetection = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-2 gap-4">
                   <StatusIndicator
                     value={environmentalData.vbr1}
                     label="Vibration Sensor 1"
-                    icon={Zap}
-                    trueColor="bg-red-500"
-                    falseColor="bg-green-500"
-                  />
-                  <StatusIndicator
-                    value={environmentalData.vbr2}
-                    label="Vibration Sensor 2"
                     icon={Zap}
                     trueColor="bg-red-500"
                     falseColor="bg-green-500"
@@ -364,21 +389,38 @@ const LandslideDetection = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="bg-gray-100 p-4 rounded-lg h-64 flex items-center justify-center">
-                    <div className="text-center">
-                      <MapPin className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                      <p className="text-lg font-semibold text-gray-800">Sensor Location</p>
-                      <p className="text-sm text-gray-600 mt-2">
-                        Latitude: {Number(environmentalData.lat).toFixed(6)}°
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Longitude: {Number(environmentalData.long).toFixed(6)}°
-                      </p>
-                      <div className="mt-4 px-4 py-2 bg-blue-100 text-blue-800 rounded-full inline-block">
-                        <span className="text-xs font-medium">Real-time GPS Tracking</span>
+                  {environmentalData && (
+                    <div className="relative h-64">
+                      <MapContainer
+                        center={[Number(environmentalData.lat), Number(environmentalData.long)]}
+                        zoom={15}
+                        scrollWheelZoom={true}
+                        className="h-full w-full rounded-lg z-0"
+                      >
+                        <TileLayer
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+                        />
+                        <Marker position={[Number(environmentalData.lat), Number(environmentalData.long)]}>
+                          <Popup>
+                            Sensor Location<br />
+                            Lat: {Number(environmentalData.lat).toFixed(6)}<br />
+                            Long: {Number(environmentalData.long).toFixed(6)}
+                          </Popup>
+                        </Marker>
+                      </MapContainer>
+                      <div className="absolute bottom-2 right-2 z-10">
+                        <a
+                          href={`https://www.google.com/maps?q=${Number(environmentalData.lat)},${Number(environmentalData.long)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 underline bg-white bg-opacity-80 px-2 py-1 rounded shadow"
+                        >
+                          View on Google Maps
+                        </a>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -398,8 +440,68 @@ const LandslideDetection = () => {
                 </CardContent>
               </Card>
             </div>
+            {/* Additional Sensor Data */}
+            <Card className="lab-card mb-8">
+              <CardHeader>
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg flex items-center justify-center">
+                    <Gauge className="w-6 h-6 text-white" />
+                  </div>
+                  <CardTitle className="text-xl">Additional Sensor Data</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-semibold text-gray-600 mb-2">Distance Measurements</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Avg Distance:</span>
+                        <span className="text-sm font-medium">{Number(environmentalData.avgdist).toFixed(2)} cm</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Distance X:</span>
+                        <span className="text-sm font-medium">{Number(environmentalData.distx).toFixed(2)} cm</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Distance Y:</span>
+                        <span className="text-sm font-medium">{Number(environmentalData.disty).toFixed(2)} cm</span>
+                      </div>
+                    </div>
+                  </div>
 
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-semibold text-gray-600 mb-2">Motion & Altitude</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Speed:</span>
+                        <span className="text-sm font-medium">{Number(environmentalData.speed).toFixed(2)} m/s</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Altitude:</span>
+                        <span className="text-sm font-medium">{Number(environmentalData.alt).toFixed(2)} m</span>
+                      </div>
+                    </div>
+                  </div>
 
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-semibold text-gray-600 mb-2">System Status</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Mode:</span>
+                        <span className="text-sm font-medium uppercase">{environmentalData.mode}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Alert Status:</span>
+                        <span className={`text-sm font-medium ${environmentalData.alert ? 'text-red-600' : 'text-green-600'}`}>
+                          {environmentalData.alert ? 'ACTIVE' : 'NORMAL'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             {/* System Status */}
             <Card className="lab-card">
               <CardHeader>
@@ -430,7 +532,7 @@ const LandslideDetection = () => {
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                     <h4 className="font-semibold text-purple-800 mb-2">Alert Level</h4>
                     <p className="text-sm text-purple-600">
-                      {environmentalData.vbr1 || environmentalData.vbr2 ? 'MEDIUM RISK' : 'LOW RISK'}
+                      {environmentalData.vbr1 ? 'MEDIUM RISK' : 'LOW RISK'}
                     </p>
                     <p className="text-xs text-purple-500 mt-1">Monitoring continuous</p>
                   </div>

@@ -36,17 +36,17 @@ app.post("/sensor-data", (req, res) => {
         ax, ay, az,
         gx, gy, gz,
         temp, hum, soil,
-        rain, vbr, atm, pres,
+        rain, vbr, alt, pres,
         lat, long,
-        heading, dist, dir, speed, mode, time
+        heading, distx, disty, avgdist, speed, mode, time, alert
     } = req.body;
 
     const data = {
         ax, ay, az,
         gx, gy, gz,
-        temp, hum, atm,
+        temp, hum, alt, pres,
         soil, rain, vbr, lat, long,
-        heading, dist, dir, speed, mode, time,
+        heading, distx, disty, avgdist, speed, mode, time, alert,
         receivedAt: new Date().toISOString()
     };
 
@@ -58,11 +58,11 @@ app.post("/sensor-data", (req, res) => {
 
 app.post("/air-monitor-data", (req, res) => {
     const {
-        co2, so2, pm25, pm10
+        nh3, co2, so2, pm25
     } = req.body;
 
     const data = {
-        co2, so2, pm25, pm10,
+        nh3, co2, so2, pm25,
         receivedAt: new Date().toISOString()
     };
 
