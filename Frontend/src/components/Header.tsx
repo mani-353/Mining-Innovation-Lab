@@ -7,95 +7,56 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isProductsOpen, setIsProductsOpen] = useState(false);
   const [isRiskAssessmentOpen, setIsRiskAssessmentOpen] = useState(false);
   const navigate = useNavigate();
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // Implement search functionality
-      console.log('Searching for:', searchQuery);
-      // For now, redirect to contact page as a placeholder
-      navigate('/contact');
-    }
-  };
-
   const productLinks = [
     { name: 'Mining Accident Analysis', path: '/products/mining-accident-analysis' },
-    { 
-      name: 'DGMS Risk Assessment', 
+    { name: 'Risk Assessment', path: '/products/risk-assessment' },
+    {
+      name: 'Notable Projects',
       path: '/products/risk-assessment',
       hasSubMenu: true,
       subItems: [
-        { name: 'DGMS Method', path: '/products/risk-assessment/dgms' },
-        { name: 'TRAM Method', path: '/products/risk-assessment/tram' }
+        { name: 'IoT Air Monitoring System', path: '/products/air-monitoring' },
+        { name: 'Landslide Detection', path: '/products/landslide-detection' }
       ]
     },
-    { name: 'IoT Air Monitoring System', path: '/products/air-monitoring' },
-    { name: 'Landslide Detection', path: '/products/landslide-detection' },
   ];
 
   const navItems = [
     { name: 'Home', path: '/' },
-    { name: 'About Us', path: '/about' },
-    { name: 'Teams/People', path: '/teams' },
-    { name: 'Products/Tools', path: '/products', hasDropdown: true },
+    { name: 'Teams', path: '/teams' },
+    { name: 'Tools', path: '/products', hasDropdown: true },
     { name: 'Publications', path: '/publications' },
     { name: 'Openings', path: '/openings' },
     { name: 'Contact Us', path: '/contact' },
+    { name: 'Admin', path: '/admin' },
   ];
 
   return (
     <header className="bg-white shadow-lg sticky top-0 z-50">
-      {/* Top social bar */}
-      <div className="lab-header text-white py-2">
-        <div className="container mx-auto px-4 flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <span className="text-sm font-medium">Mining Innovation Lab | NIT Rourkela</span>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <a href="https://www.nitrkl.ac.in" target="_blank" rel="noopener noreferrer" 
-               className="text-sm hover:text-blue-200 transition-colors">
-              Go Back to Main Website
-            </a>
-          </div>
-        </div>
-      </div>
 
       {/* Main header */}
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Link to="/" className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">MI</span>
-              </div>
+              <img
+                src="/charan_kumar_ala.jpg"
+                alt="Dr. Charan Kumar Ala"
+                className="w-12 h-12 rounded-full object-cover"
+              />
               <div>
                 <h1 className="text-xl md:text-2xl font-bold text-gray-800 leading-tight">
-                  Mining Innovation Lab
+                  Dr. Charan Kumar Ala
                 </h1>
                 <p className="text-sm text-gray-600">
                   Department of Mining Engineering | NIT Rourkela
                 </p>
               </div>
             </Link>
-          </div>
-
-          {/* Search Bar */}
-          <div className="hidden md:flex items-center">
-            <form onSubmit={handleSearch} className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-64 border-gray-300 focus:border-blue-500"
-              />
-            </form>
           </div>
 
           {/* Mobile Menu Button */}
@@ -119,7 +80,7 @@ const Header = () => {
             {navItems.map((item) => (
               <div key={item.name} className="relative">
                 {item.hasDropdown ? (
-                  <div 
+                  <div
                     className="relative"
                     onMouseEnter={() => setIsProductsOpen(true)}
                     onMouseLeave={() => setIsProductsOpen(false)}
@@ -131,7 +92,7 @@ const Header = () => {
                       <span className="text-sm font-medium">{item.name}</span>
                       <ChevronDown className="w-4 h-4" />
                     </Link>
-                    
+
                     {isProductsOpen && (
                       <div className="absolute top-full left-0 w-80 bg-white rounded-lg shadow-xl py-2 z-50">
                         {productLinks.map((product) => (
@@ -149,7 +110,7 @@ const Header = () => {
                                   {product.name}
                                   <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
                                 </Link>
-                                
+
                                 {isRiskAssessmentOpen && (
                                   <div className="absolute left-full top-0 w-48 bg-white rounded-lg shadow-xl py-2 ml-1 border">
                                     {product.subItems?.map((subItem) => (
@@ -232,20 +193,6 @@ const Header = () => {
                   )}
                 </div>
               ))}
-              
-              {/* Mobile Search */}
-              <div className="pt-4 border-t border-white/20 mt-4">
-                <form onSubmit={handleSearch} className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    type="text"
-                    placeholder="Search..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/70"
-                  />
-                </form>
-              </div>
             </div>
           )}
         </div>

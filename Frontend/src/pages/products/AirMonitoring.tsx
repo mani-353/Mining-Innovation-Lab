@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wifi, Thermometer, Wind, Activity, MapPin } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { ref, onValue } from "firebase/database";
-import { db } from '@/integrations/firebase/database';
+import { rdb } from '@/integrations/firebase/client';
 import { useState, useEffect } from 'react';
 
 // Define interface for sensor data
@@ -23,14 +23,14 @@ const AirMonitoring = () => {
   const [environmentalData, setEnvironmentalData] = useState<any>(null);
   // Add these threshold constants after the state declarations:
   const THRESHOLDS = {
-    co2: 5000,    // 5000 ppm (OSHA 8-hour TWA)
-    so2: 5,       // 5 ppm (OSHA 8-hour TWA)
-    nh3: 25,      // 25 ppm (OSHA 8-hour TWA)
-    pm25: 35      // 35 μg/m³ (EPA 24-hour standard)
+    co2: 2000,    // 5000 ppm (OSHA 8-hour TWA)
+    so2: 0.5,       // 5 ppm (OSHA 8-hour TWA)
+    nh3: 7,      // 25 ppm (OSHA 8-hour TWA)
+    pm25: 50      // 35 μg/m³ (EPA 24-hour standard)
   };
 
   useEffect(() => {
-    const sensorRef = ref(db, "airMonitoring");
+    const sensorRef = ref(rdb, "airMonitoring");
 
     const unsubscribe = onValue(sensorRef, (snapshot) => {
       const data = snapshot.val();
@@ -76,92 +76,6 @@ const AirMonitoring = () => {
             surveillance in mining operations, ensuring worker safety and environmental compliance.
           </p>
         </div>
-
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
-          <Card className="lab-card">
-            <CardHeader>
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-lg flex items-center justify-center mb-4">
-                <Wifi className="w-8 h-8 text-white" />
-              </div>
-              <CardTitle className="text-xl">IoT Connectivity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">
-                Wireless sensor networks deployed across mining sites for seamless data transmission
-                and real-time monitoring capabilities.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="lab-card">
-            <CardHeader>
-              <div className="w-16 h-16 bg-gradient-to-br from-green-600 to-emerald-600 rounded-lg flex items-center justify-center mb-4">
-                <Thermometer className="w-8 h-8 text-white" />
-              </div>
-              <CardTitle className="text-xl">Environmental Sensors</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">
-                Multi-parameter sensors measuring temperature, humidity, dust particles,
-                gas concentrations, and other critical environmental factors.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="lab-card">
-            <CardHeader>
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-violet-600 rounded-lg flex items-center justify-center mb-4">
-                <Activity className="w-8 h-8 text-white" />
-              </div>
-              <CardTitle className="text-xl">Real-time Analytics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">
-                Live data processing and analysis with instant alerts for hazardous conditions
-                and automated reporting systems.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <section className="bg-white rounded-2xl p-8 shadow-sm mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Key Features</h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold text-blue-800 mb-4">Monitoring Parameters</h3>
-              <ul className="space-y-2 text-gray-600">
-                <li className="flex items-center">
-                  <Wind className="w-4 h-4 text-blue-600 mr-2" />
-                  Air Quality Index (AQI)
-                </li>
-                <li className="flex items-center">
-                  <Wind className="w-4 h-4 text-blue-600 mr-2" />
-                  Ammonia (NH3)
-                </li>
-                <li className="flex items-center">
-                  <Wind className="w-4 h-4 text-blue-600 mr-2" />
-                  Particulate Matter (PM2.5)
-                </li>
-                <li className="flex items-center">
-                  <Wind className="w-4 h-4 text-blue-600 mr-2" />
-                  Gas Concentrations (CO2, SO2)
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold text-green-800 mb-4">System Capabilities</h3>
-              <ul className="space-y-2 text-gray-600">
-                <li>• 24/7 continuous monitoring</li>
-                <li>• SMS and email alert system</li>
-                <li>• Historical data logging</li>
-                <li>• Remote access dashboard</li>
-                <li>• Automated compliance reporting</li>
-                <li>• Mobile app integration</li>
-              </ul>
-            </div>
-          </div>
-        </section>
 
         {/* Air Quality Index Graph */}
         <section className="bg-white rounded-2xl p-8 shadow-sm mb-8">
@@ -334,21 +248,6 @@ const AirMonitoring = () => {
                 </ResponsiveContainer>
               </div>
             </div>
-          </div>
-        </section>
-
-        <section className="bg-white rounded-2xl p-8 shadow-sm">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Deployment Status</h2>
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-            <div className="flex items-center mb-4">
-              <Activity className="w-6 h-6 text-green-600 mr-2" />
-              <span className="text-green-800 font-semibold">Successfully Deployed</span>
-            </div>
-            <p className="text-gray-700">
-              The IoT Air Monitoring System has been successfully deployed across multiple mining
-              sites and is actively monitoring environmental conditions. The system has shown
-              significant improvements in early hazard detection and environmental compliance.
-            </p>
           </div>
         </section>
       </div>

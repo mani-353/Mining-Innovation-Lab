@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Mountain, AlertTriangle, Brain, Camera, Zap, Droplets, Thermometer, Gauge, Navigation, MapPin } from 'lucide-react';
 import { ref, onValue } from "firebase/database";
-import { db } from '@/integrations/firebase/database';
+import { rdb } from '@/integrations/firebase/client';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 
 
 const RadialGauge = ({ value, max, min = 0, label, unit, color = "#3b82f6" }) => {
-  const percentage = ((value - min) / (max - min)) * 100;
+  const safeValue = isNaN(value) ? 0 : value;
+  const percentage = ((safeValue - min) / (max - min)) * 100;
   const circumference = 2 * Math.PI * 45;
   const strokeDasharray = `${(percentage / 100) * circumference} ${circumference}`;
 
@@ -40,7 +41,7 @@ const RadialGauge = ({ value, max, min = 0, label, unit, color = "#3b82f6" }) =>
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-sm font-bold">{Number(value).toFixed(1)}</span>
+          <span className="text-sm font-bold">{Number(safeValue).toFixed(1)}</span>
         </div>
       </div>
       <div className="text-center mt-2">
@@ -97,7 +98,7 @@ const LandslideDetection = () => {
   const [environmentalData, setEnvironmentalData] = useState(null);
 
   useEffect(() => {
-    const sensorRef = ref(db, "sensorData");
+    const sensorRef = ref(rdb, "sensorData");
 
     const unsubscribe = onValue(sensorRef, (snapshot) => {
       const data = snapshot.val();
@@ -121,23 +122,22 @@ const LandslideDetection = () => {
 
         if (latest) {
           setEnvironmentalData({
-            temp: latest.temp ?? 0,
-            hum: latest.hum ?? 0,
-            atm: latest.pres ?? 1013,  // Changed from 'atm' to 'pres'
-            soil: latest.soil ?? 0,
+            temp: isNaN(latest.temp) ? 0 : (latest.temp ?? 0),
+            hum: isNaN(latest.hum) ? 0 : (latest.hum ?? 0),
+            atm: isNaN(latest.pres) ? 1013 : (latest.pres ?? 1013),
+            soil: isNaN(latest.soil) ? 0 : (latest.soil ?? 0),
             vbr1: Boolean(latest.vbr),
             rain: Boolean(latest.rain),
-            lat: latest.lat ?? 0,
-            long: latest.long ?? 0,
-            compass: latest.heading ?? 0,
-            // New fields
-            avgdist: latest.avgdist ?? 0,
-            distx: latest.distx ?? 0,
-            disty: latest.disty ?? 0,
-            speed: latest.speed ?? 0,
+            lat: isNaN(latest.lat) ? 28.6139 : (latest.lat ?? 28.6139), // Default to Delhi coordinates
+            long: isNaN(latest.long) ? 77.2090 : (latest.long ?? 77.2090), // Default to Delhi coordinates
+            compass: isNaN(latest.heading) ? 0 : (latest.heading ?? 0),
+            avgdist: isNaN(latest.avgdist) ? 0 : (latest.avgdist ?? 0),
+            distx: isNaN(latest.distx) ? 0 : (latest.distx ?? 0),
+            disty: isNaN(latest.disty) ? 0 : (latest.disty ?? 0),
+            speed: isNaN(latest.speed) ? 0 : (latest.speed ?? 0),
             mode: latest.mode ?? 'unknown',
-            alt: latest.alt ?? 0,
-            alert: Boolean(latest.alert), // Add alert field
+            alt: isNaN(latest.alt) ? 0 : (latest.alt ?? 0),
+            alert: Boolean(latest.alert),
           });
         } else {
           setEnvironmentalData(null);
@@ -389,7 +389,7 @@ const LandslideDetection = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {environmentalData && (
+                  {environmentalData && !isNaN(environmentalData.lat) && !isNaN(environmentalData.long) && (
                     <div className="relative h-64">
                       <MapContainer
                         center={[Number(environmentalData.lat), Number(environmentalData.long)]}
@@ -418,6 +418,15 @@ const LandslideDetection = () => {
                         >
                           View on Google Maps
                         </a>
+                      </div>
+                    </div>
+                  )}
+                  {environmentalData && (isNaN(environmentalData.lat) || isNaN(environmentalData.long)) && (
+                    <div className="relative h-64 flex items-center justify-center bg-gray-100 rounded-lg">
+                      <div className="text-center">
+                        <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-gray-600">GPS data unavailable</p>
+                        <p className="text-sm text-gray-500">Poor weather conditions detected</p>
                       </div>
                     </div>
                   )}
@@ -498,43 +507,6 @@ const LandslideDetection = () => {
                         </span>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            {/* System Status */}
-            <Card className="lab-card">
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
-                    <Camera className="w-6 h-6 text-white" />
-                  </div>
-                  <CardTitle className="text-xl">System Information</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <h4 className="font-semibold text-green-800 mb-2">System Status</h4>
-                    <p className="text-sm text-green-600">All sensors operational</p>
-                    <div className="flex items-center mt-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-2"></div>
-                      <span className="text-xs text-green-600">Online</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="font-semibold text-blue-800 mb-2">Data Update Rate</h4>
-                    <p className="text-sm text-blue-600">Every 5 seconds</p>
-                    <p className="text-xs text-blue-500 mt-1">Last update: {new Date().toLocaleTimeString()}</p>
-                  </div>
-
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                    <h4 className="font-semibold text-purple-800 mb-2">Alert Level</h4>
-                    <p className="text-sm text-purple-600">
-                      {environmentalData.vbr1 ? 'MEDIUM RISK' : 'LOW RISK'}
-                    </p>
-                    <p className="text-xs text-purple-500 mt-1">Monitoring continuous</p>
                   </div>
                 </div>
               </CardContent>

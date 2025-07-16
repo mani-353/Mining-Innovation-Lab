@@ -11,13 +11,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Shield, 
-  AlertTriangle, 
-  Calculator, 
-  FileText, 
-  Plus, 
-  Download, 
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import {
+  Shield,
+  AlertTriangle,
+  Calculator,
+  FileText,
+  Plus,
+  Download,
   Search,
   Target,
   ArrowLeft
@@ -208,16 +210,16 @@ const DGMSRiskAssessment = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showCustomHazardModal, setShowCustomHazardModal] = useState(false);
   const [customHazards, setCustomHazards] = useState<string[]>([]);
-  
+
   // Risk parameters
   const [consequence, setConsequence] = useState('');
   const [exposure, setExposure] = useState('');
   const [probability, setProbability] = useState('');
-  
+
   // Assessment results
   const [assessments, setAssessments] = useState<any[]>([]);
   const [currentRiskScore, setCurrentRiskScore] = useState(0);
-  
+
   // Custom hazard form
   const [customHazard, setCustomHazard] = useState({
     name: '',
@@ -241,7 +243,7 @@ const DGMSRiskAssessment = () => {
 
   const addAssessment = () => {
     if (!selectedHazard || !consequence || !exposure || !probability) return;
-    
+
     const newAssessment = {
       id: Date.now(),
       hazard: selectedHazard,
@@ -253,9 +255,9 @@ const DGMSRiskAssessment = () => {
       riskLevel: getRiskLevel(currentRiskScore),
       timestamp: new Date().toLocaleString()
     };
-    
+
     setAssessments([...assessments, newAssessment]);
-    
+
     // Reset form
     setSelectedHazard('');
     setConsequence('');
@@ -265,32 +267,169 @@ const DGMSRiskAssessment = () => {
 
   const addCustomHazard = () => {
     if (!customHazard.name || !customHazard.group) return;
-    
+
     const newHazardName = customHazard.name;
     setCustomHazards([...customHazards, newHazardName]);
-    
+
     // Add to selected group temporarily
     if (!HAZARD_GROUPS[customHazard.group]) {
       HAZARD_GROUPS[customHazard.group] = [];
     }
     HAZARD_GROUPS[customHazard.group].push(newHazardName);
-    
+
     setCustomHazard({ name: '', group: '' });
     setShowCustomHazardModal(false);
   };
 
   const exportToPDF = () => {
-    // PDF generation logic would go here
-    console.log('Exporting DGMS assessment to PDF...', assessments);
-    alert('PDF export functionality: DGMS Risk Assessment Report would be generated here');
-  };
+    if (assessments.length === 0) {
+      alert('No assessments to export. Please add some risk assessments first.');
+      return;
+    }
 
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    let yPosition = 20;
+
+    // Header
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.text('DGMS Risk Assessment Report', pageWidth / 2, yPosition, { align: 'center' });
+
+    yPosition += 10;
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth / 2, yPosition, { align: 'center' });
+
+    yPosition += 10;
+    doc.text(`Total Hazards Assessed: ${assessments.length}`, pageWidth / 2, yPosition, { align: 'center' });
+
+    yPosition += 15;
+
+    // Summary Statistics
+    const highRiskCount = assessments.filter(a => a.riskLevel.level === 'High').length;
+    const mediumRiskCount = assessments.filter(a => a.riskLevel.level === 'Medium').length;
+    const lowRiskCount = assessments.filter(a => a.riskLevel.level === 'Low').length;
+
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Risk Summary:', 20, yPosition);
+
+    yPosition += 10;
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text(`High Risk: ${highRiskCount}`, 30, yPosition);
+    doc.text(`Medium Risk: ${mediumRiskCount}`, 80, yPosition);
+    doc.text(`Low Risk: ${lowRiskCount}`, 130, yPosition);
+
+    yPosition += 15;
+
+    // Group assessments by hazard group
+    const groupedAssessments = getGroupedAssessments();
+
+    Object.entries(groupedAssessments).forEach(([group, groupAssessments]) => {
+      // Check if we need a new page
+      if (yPosition > pageHeight - 60) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      // Group header
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text(`${group} (${groupAssessments.length} hazards)`, 20, yPosition);
+      yPosition += 10;
+
+      // Prepare table data
+      const tableData = groupAssessments
+        .sort((a, b) => b.riskScore - a.riskScore)
+        .map(assessment => [
+          assessment.hazard,
+          assessment.consequence,
+          assessment.exposure,
+          assessment.probability,
+          assessment.riskScore.toFixed(4),
+          assessment.riskLevel.level
+        ]);
+
+      // Table headers
+      const headers = ['Hazard', 'Consequence', 'Exposure', 'Probability', 'Risk Score', 'Risk Level'];
+
+      // Add table
+      (autoTable as any)(doc, {
+        head: [headers],
+        body: tableData,
+        startY: yPosition,
+        theme: 'grid',
+        styles: {
+          fontSize: 10,
+          cellPadding: 3,
+        },
+        headStyles: {
+          fillColor: [41, 128, 185],
+          textColor: 255,
+          fontStyle: 'bold'
+        },
+        columnStyles: {
+          0: { cellWidth: 50 }, // Hazard
+          1: { cellWidth: 25 }, // Consequence
+          2: { cellWidth: 25 }, // Exposure
+          3: { cellWidth: 25 }, // Probability
+          4: { cellWidth: 25 }, // Risk Score
+          5: { cellWidth: 25 }, // Risk Level
+        },
+        didParseCell: function (data: any) {
+          // Color code risk levels
+          if (data.column.index === 5) { // Risk Level column
+            const riskLevel = data.cell.text[0];
+            if (riskLevel === 'High') {
+              data.cell.styles.fillColor = [231, 76, 60];
+              data.cell.styles.textColor = 255;
+            } else if (riskLevel === 'Medium') {
+              data.cell.styles.fillColor = [241, 196, 15];
+              data.cell.styles.textColor = 0;
+            } else if (riskLevel === 'Low') {
+              data.cell.styles.fillColor = [46, 204, 113];
+              data.cell.styles.textColor = 255;
+            }
+          }
+        }
+      });
+
+      yPosition = (doc as any).lastAutoTable.finalY + 15;
+    });
+
+    // Footer with methodology explanation
+    if (yPosition > pageHeight - 40) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text('DGMS Risk Assessment Methodology:', 20, yPosition);
+
+    yPosition += 10;
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text('Risk Score = Consequence × Exposure × Probability', 20, yPosition);
+
+    yPosition += 8;
+    doc.text('Risk Levels:', 20, yPosition);
+    doc.text('• Low: < 0.01', 30, yPosition + 5);
+    doc.text('• Medium: 0.01 - 0.99', 30, yPosition + 10);
+    doc.text('• High: ≥ 1.0', 30, yPosition + 15);
+
+    // Save the PDF
+    doc.save(`DGMS_Risk_Assessment_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
   // Filter hazards based on search
   const getFilteredHazards = () => {
     if (!selectedHazardGroup) return [];
-    
+
     const hazards = HAZARD_GROUPS[selectedHazardGroup] || [];
-    return hazards.filter(hazard => 
+    return hazards.filter(hazard =>
       hazard.toLowerCase().includes(searchTerm.toLowerCase())
     );
   };
@@ -310,7 +449,7 @@ const DGMSRiskAssessment = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       <div className="container mx-auto px-4 py-8">
         {/* Navigation Header */}
         <div className="flex items-center gap-4 mb-6">
@@ -383,15 +522,15 @@ const DGMSRiskAssessment = () => {
                           <Label>Hazard Name</Label>
                           <Input
                             value={customHazard.name}
-                            onChange={(e) => setCustomHazard({...customHazard, name: e.target.value})}
+                            onChange={(e) => setCustomHazard({ ...customHazard, name: e.target.value })}
                             placeholder="Enter hazard name..."
                           />
                         </div>
                         <div>
                           <Label>Hazard Group</Label>
-                          <Select 
-                            value={customHazard.group} 
-                            onValueChange={(value) => setCustomHazard({...customHazard, group: value})}
+                          <Select
+                            value={customHazard.group}
+                            onValueChange={(value) => setCustomHazard({ ...customHazard, group: value })}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select group..." />
@@ -524,8 +663,8 @@ const DGMSRiskAssessment = () => {
                     </Badge>
                   </div>
                 </div>
-                <Button 
-                  onClick={addAssessment} 
+                <Button
+                  onClick={addAssessment}
                   disabled={!selectedHazard || !consequence || !exposure || !probability}
                   className="mt-4 w-full"
                 >
@@ -570,25 +709,25 @@ const DGMSRiskAssessment = () => {
                           {groupAssessments
                             .sort((a, b) => b.riskScore - a.riskScore)
                             .map((assessment) => (
-                            <TableRow key={assessment.id}>
-                              <TableCell className="max-w-xs">
-                                <div className="truncate" title={assessment.hazard}>
-                                  {assessment.hazard}
-                                </div>
-                              </TableCell>
-                              <TableCell>{assessment.consequence}</TableCell>
-                              <TableCell>{assessment.exposure}</TableCell>
-                              <TableCell>{assessment.probability}</TableCell>
-                              <TableCell className="font-mono">
-                                {assessment.riskScore.toFixed(4)}
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={`${assessment.riskLevel.color} text-white`}>
-                                  {assessment.riskLevel.level}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                              <TableRow key={assessment.id}>
+                                <TableCell className="max-w-xs">
+                                  <div className="truncate" title={assessment.hazard}>
+                                    {assessment.hazard}
+                                  </div>
+                                </TableCell>
+                                <TableCell>{assessment.consequence}</TableCell>
+                                <TableCell>{assessment.exposure}</TableCell>
+                                <TableCell>{assessment.probability}</TableCell>
+                                <TableCell className="font-mono">
+                                  {assessment.riskScore.toFixed(4)}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={`${assessment.riskLevel.color} text-white`}>
+                                    {assessment.riskLevel.level}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
                         </TableBody>
                       </Table>
                     </div>
